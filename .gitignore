@@ -1,1 +1,32 @@
 .venv
+fast-events-app/node_modules
+fast-events-app/.expo/
+fast-events-app/dist/
+fast-events-app/web-build/
+fast-events-app/expo-env.d.ts
+fast-events-app/.kotlin/
+fast-events-app/*.orig.*
+fast-events-app/*.jks
+fast-events-app/*.p8
+fast-events-app/*.p12
+fast-events-app/*.key
+fast-events-app/*.mobileprovision
+fast-events-app/.metro-health-check*
+fast-events-app/npm-debug.*
+fast-events-app/yarn-debug.*
+fast-events-app/yarn-error.*
+fast-events-app/.DS_Store
+fast-events-app/*.pem
+
+fast-events-app/.env*.local
+
+# typescript
+fast-events-app/*.tsbuildinfo
+
+fast-events-app/example
+
+# generated native folders
+/ios
+/android
+
+
