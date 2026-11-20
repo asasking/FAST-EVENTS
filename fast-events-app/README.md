@@ -10,7 +10,11 @@ Use `useTheme` from `@/hooks/use-theme` to access the current `mode`, semantic `
 
 ## Welcome and navigation
 
-The first-launch welcome screen lives at `src/app/index.tsx`, outside the tab group. Continuing marks onboarding complete in SecureStore on native and browser storage on web, then opens `/home`. Tab screens belong in `src/app/(tabs)/`; add each as a sibling route and register its label and icon in `(tabs)/_layout.tsx`. The Home route is currently a placeholder until the main event-discovery screen is built.
+The first-launch welcome screen lives at `src/app/index.tsx`, outside the tab group. Continuing marks onboarding complete in SecureStore on native and browser storage on web, then opens `/signup`. Returning users go to `/home`. Tab screens belong in `src/app/(tabs)/`; add each as a sibling route and register its label and icon in `(tabs)/_layout.tsx`. The Home route is currently a placeholder until the main event-discovery screen is built.
+
+## Authentication placeholders
+
+The login and signup routes are `src/app/login.tsx` and `src/app/signup.tsx`. They use a username and international phone number with a future SMS OTP flow; no SMS is sent and no account or session is created until the Django endpoints are connected. The signup country and currency pickers currently use the bundled ISO metadata from `countries-list`; replace the placeholder options with the backend-supported market list when the API is ready.
 
 ## Get started
 

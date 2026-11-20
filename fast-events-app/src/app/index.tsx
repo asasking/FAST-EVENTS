@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppHeader } from "@/components/app-header";
 import { useTheme } from "@/hooks/use-theme";
 import { fontSize, radius, spacing } from "@/theme";
 import {
@@ -38,7 +38,7 @@ export default function WelcomeScreen() {
         }
 
         if (hasCompleted) {
-          router.replace("/home");
+          router.replace("/signup");
           return;
         }
 
@@ -91,22 +91,7 @@ export default function WelcomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.brand}>
-            <View
-              style={[
-                styles.brandMark,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <Ionicons color={colors.onPrimary} name="ticket-outline" size={20} />
-            </View>
-            <Text style={[styles.brandName, { color: colors.text }]}>
-              <Text style={{ color: colors.primary }}>Fast</Text>Events
-            </Text>
-          </View>
-          <ThemeToggle style={styles.themeToggle} />
-        </View>
+        <AppHeader variant="home" />
 
         <View
           accessibilityLabel="Music and football events"
@@ -285,35 +270,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: {
+    alignSelf: "center",
     flexGrow: 1,
+    maxWidth: 480,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.md,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 52,
-  },
-  brand: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  brandMark: {
-    alignItems: "center",
-    borderRadius: radius.md,
-    height: 36,
-    justifyContent: "center",
-    width: 36,
-  },
-  brandName: {
-    fontSize: fontSize.lg,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  themeToggle: {
-    width: 138,
+    width: "100%",
   },
   hero: {
     alignItems: "center",
