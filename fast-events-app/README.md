@@ -2,6 +2,12 @@
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+## Theming
+
+Shared color palettes live in `src/theme/colors.ts`; spacing, radius, and type-size tokens live in `src/theme/tokens.ts`. The root layout provides the theme context, which defaults to light mode.
+
+Use `useTheme` from `@/hooks/use-theme` to access the current `mode`, semantic `colors`, `isDark`, and `toggleTheme`. The reusable `ThemeToggle` component provides an accessible light/dark switch and can be placed in a future screen or settings panel. Theme selection currently lasts for the active app session.
+
 ## Get started
 
 1. Install dependencies
