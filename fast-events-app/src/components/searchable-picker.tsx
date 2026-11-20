@@ -35,6 +35,7 @@ type PickerFieldProps = {
   placeholder: string;
   value: string | null;
   onPress: () => void;
+  disabled?: boolean;
 };
 
 export function PickerField({
@@ -42,6 +43,7 @@ export function PickerField({
   placeholder,
   value,
   onPress,
+  disabled = false,
 }: PickerFieldProps) {
   const { colors } = useTheme();
 
@@ -52,12 +54,15 @@ export function PickerField({
       </Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         onPress={onPress}
         style={[
           styles.fieldButton,
           {
             backgroundColor: colors.surfaceRaised,
             borderColor: colors.border,
+            opacity: disabled ? 0.65 : 1,
           },
         ]}
       >

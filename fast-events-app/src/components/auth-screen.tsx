@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +25,8 @@ type AuthButtonProps = {
   title: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
+  disabled?: boolean;
+  loading?: boolean;
 };
 
 type AuthNoticeProps = {
@@ -79,23 +82,34 @@ export function AuthButton({
   onPress,
   title,
   variant = "primary",
+  disabled = false,
+  loading = false,
 }: AuthButtonProps) {
   const { colors } = useTheme();
   const isPrimary = variant === "primary";
+  const isDisabled = disabled || loading;
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         {
           backgroundColor: isPrimary ? colors.primary : colors.surfaceRaised,
           borderColor: isPrimary ? colors.primary : colors.border,
-          opacity: pressed ? 0.8 : 1,
+          opacity: pressed || isDisabled ? 0.7 : 1,
         },
       ]}
     >
+      {loading ? (
+        <ActivityIndicator
+          color={isPrimary ? colors.onPrimary : colors.text}
+          size="small"
+        />
+      ) : null}
       <Text
         style={[
           styles.buttonText,
@@ -167,6 +181,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: radius.sm,
     borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
     justifyContent: "center",
     minHeight: 48,
     paddingHorizontal: spacing.md,

@@ -10,7 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
+import secrets
+from datetime import timedelta
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +24,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2!@*3hyu21yqo7o=%^3&o%5yg4b7=ph3@l@=u44xxt5nm!nslz'
+DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "709dfde27d74dfd00fe9e01190e3a57f98c38dbafb4a7ee946e9cd7d73cf40ba")
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY must be configured when DEBUG is disabled."
+        )
+    SECRET_KEY = secrets.token_urlsafe(50)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1,10.0.2.2,192.168.1.148"
+        
+    ).split(",")
+    if host.strip()
+]
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:8081,http://127.0.0.1:8081,"
+        "http://localhost:8098,http://127.0.0.1:8098",
+    ).split(",")
+    if origin.strip()
+]
 
 
 # Application definition
@@ -37,15 +62,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "corsheaders",
     "django_countries",
     "rest_framework",
-    "core"
+    "rest_framework_simplejwt.token_blacklist",
+    "core",
+    "sms",
 ]
 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -82,6 +111,35 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+AUTH_USER_MODEL = "core.User"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "otp_request": "10/hour",
+        "otp_verify": "20/hour",
+    },
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+OTP_EXPIRY_SECONDS = 600
+OTP_RESEND_COOLDOWN_SECONDS = 60
+OTP_MAX_ATTEMPTS = 5
+OTP_MAX_SENDS_PER_HOUR = 5
+LOGIN_OTP_COOLDOWN_SECONDS = 300
 
 
 # Password validation
@@ -129,3 +187,10 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+BEEM_API = os.environ.get("BEEM_API", "a115a935ea8e3ea2")
+BEEM_SECRET = os.environ.get("BEEM_SECRET", "Nzk1ZjM2NDZmNzgzMTBlNDFmYTI4NmUwYmUxZDkwMTEzYTVlMGJmNjg0YWU4NGVlZDc0ZmE1NWU1MTdiM2ZiMA==")
+BEEM_SENDER_ID = os.environ.get("BEEM_SENDER_ID", "AC-INSIGHTS")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

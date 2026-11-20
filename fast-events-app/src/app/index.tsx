@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/app-header";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/providers/auth-provider";
 import { fontSize, radius, spacing } from "@/theme";
 import {
   hasCompletedOnboarding,
@@ -24,11 +25,21 @@ import {
 export default function WelcomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { isLoading: isAuthLoading, session } = useAuth();
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (session) {
+      router.replace("/home");
+      return;
+    }
+
     let isMounted = true;
 
     hasCompletedOnboarding()
@@ -56,7 +67,7 @@ export default function WelcomeScreen() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [isAuthLoading, router, session]);
 
   const handleGetStarted = async () => {
     setIsStarting(true);
@@ -64,7 +75,7 @@ export default function WelcomeScreen() {
 
     try {
       await markOnboardingComplete();
-      router.replace("/home");
+      router.replace("/signup");
     } catch {
       setErrorMessage("We couldn't save your progress. Please try again.");
       setIsStarting(false);

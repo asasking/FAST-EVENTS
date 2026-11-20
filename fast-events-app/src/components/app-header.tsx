@@ -1,13 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "@/hooks/use-theme";
 import { fontSize, radius, spacing } from "@/theme";
 
 type AppHeaderProps = {
-  variant: "home" | "login" | "signup";
+  variant: "home" | "login" | "signup" | "authenticated";
+  onSignOut?: () => void;
+  signingOut?: boolean;
 };
 
 type HeaderLinkProps = {
@@ -16,7 +24,11 @@ type HeaderLinkProps = {
   prominent?: boolean;
 };
 
-export function AppHeader({ variant }: AppHeaderProps) {
+export function AppHeader({
+  variant,
+  onSignOut,
+  signingOut = false,
+}: AppHeaderProps) {
   const { colors } = useTheme();
   const destination: HeaderLinkProps & { prompt: string } | null =
     variant === "login"
@@ -49,6 +61,26 @@ export function AppHeader({ variant }: AppHeaderProps) {
               prominent
             />
           </View>
+        ) : variant === "authenticated" ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: signingOut, busy: signingOut }}
+            disabled={signingOut}
+            onPress={onSignOut}
+            style={[
+              styles.link,
+              styles.prominentLink,
+              { backgroundColor: colors.primary },
+            ]}
+          >
+            {signingOut ? (
+              <ActivityIndicator color={colors.onPrimary} size="small" />
+            ) : (
+              <Text style={[styles.linkText, { color: colors.onPrimary }]}>
+                Sign out
+              </Text>
+            )}
+          </Pressable>
         ) : (
           <View style={styles.authLinks}>
             <HeaderLink href="/login" label="Log in" />

@@ -1,1 +1,1 @@
-migrations/
+# Keep Django schema migrations under version control.

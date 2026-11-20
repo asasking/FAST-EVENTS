@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 
 import { AuthField } from "@/components/auth-field";
@@ -13,8 +14,13 @@ import {
   type CountryOption,
   type CurrencyOption,
 } from "@/data/market-options";
-import { useTheme } from "@/hooks/use-theme";
-import { fontSize } from "@/theme";
+import { useResendCooldown } from "@/hooks/use-resend-cooldown";
+import { useAuth } from "@/providers/auth-provider";
+import {
+  AuthApiError,
+  requestSignupCode,
+  verifySignupCode,
+} from "@/services/auth-api";
 import { isValidInternationalPhoneNumber } from "@/utils/phone-number";
 
 const countryPickerOptions: PickerOption[] = countryOptions.map((country) => {
@@ -48,7 +54,8 @@ const currencyPickerOptions: PickerOption[] = currencyOptions.map(
 );
 
 export default function SignupScreen() {
-  const { colors } = useTheme();
+  const router = useRouter();
+  const { signIn } = useAuth();
   const [username, setUsername] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -61,8 +68,13 @@ export default function SignupScreen() {
     null,
   );
   const [isCodeStepVisible, setIsCodeStepVisible] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeTone, setNoticeTone] = useState<"info" | "error">("info");
+  const { clearCooldown, secondsRemaining, startCooldown } =
+    useResendCooldown();
+  const isBusy = isSendingCode || isCreatingAccount;
 
   const selectedCountryLabel = selectedCountry
     ? `${selectedCountry.flag}  ${selectedCountry.name}`
@@ -80,8 +92,17 @@ export default function SignupScreen() {
     [],
   );
 
-  const requestCode = () => {
-    if (!isValidInternationalPhoneNumber(phoneNumber)) {
+  const requestCode = async () => {
+    const normalizedPhone = phoneNumber.trim();
+    const normalizedUsername = username.trim();
+
+    if (normalizedUsername.length < 3) {
+      setNoticeTone("error");
+      setNotice("Choose a username with at least 3 characters.");
+      return;
+    }
+
+    if (!isValidInternationalPhoneNumber(normalizedPhone)) {
       setNoticeTone("error");
       setNotice(
         "Enter a valid phone number in international format, including + and country code.",
@@ -89,21 +110,51 @@ export default function SignupScreen() {
       return;
     }
 
-    setIsCodeStepVisible(true);
-    setNoticeTone("info");
-    setNotice(
-      "Placeholder only: no SMS was sent. Phone verification will be connected to Django later.",
-    );
+    if (!selectedCountry || !selectedCurrency) {
+      setNoticeTone("error");
+      setNotice("Choose your home country and preferred currency.");
+      return;
+    }
+
+    setIsSendingCode(true);
+    setNotice(null);
+    try {
+      const request = await requestSignupCode({
+        username: normalizedUsername,
+        phone_number: normalizedPhone,
+        country: selectedCountry.code,
+        currency: selectedCurrency.code,
+      });
+      setIsCodeStepVisible(true);
+      setVerificationCode("");
+      startCooldown(request.resendAfterSeconds);
+      setNoticeTone("info");
+      setNotice(
+        `If these details are eligible, a code will be sent. It expires in ${Math.ceil(request.expiresInSeconds / 60)} minutes.`,
+      );
+    } catch (error) {
+      if (error instanceof AuthApiError) {
+        startCooldown(error.retryAfterSeconds);
+      }
+      setNoticeTone("error");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "We couldn't request a verification code. Please try again.",
+      );
+    } finally {
+      setIsSendingCode(false);
+    }
   };
 
-  const createAccount = () => {
+  const createAccount = async () => {
     if (username.trim().length < 3) {
       setNoticeTone("error");
       setNotice("Choose a username with at least 3 characters.");
       return;
     }
 
-    if (!isValidInternationalPhoneNumber(phoneNumber)) {
+    if (!isValidInternationalPhoneNumber(phoneNumber.trim())) {
       setNoticeTone("error");
       setNotice("Enter a valid international phone number.");
       return;
@@ -115,16 +166,41 @@ export default function SignupScreen() {
       return;
     }
 
-    if (!isCodeStepVisible || !verificationCode.trim()) {
+    if (!isCodeStepVisible || !/^\d{6}$/.test(verificationCode.trim())) {
       setNoticeTone("error");
-      setNotice("Request a verification code and enter it to continue.");
+      setNotice("Enter the 6-digit verification code to continue.");
       return;
     }
 
-    setNoticeTone("info");
-    setNotice(
-      "Signup is not connected yet. No SMS was sent and no account was created.",
-    );
+    setIsCreatingAccount(true);
+    setNotice(null);
+    try {
+      const session = await verifySignupCode(
+        phoneNumber.trim(),
+        verificationCode.trim(),
+      );
+      await signIn(session);
+      router.replace("/home");
+    } catch (error) {
+      if (error instanceof AuthApiError && error.retryAfterSeconds > 0) {
+        startCooldown(error.retryAfterSeconds);
+      }
+      setNoticeTone("error");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "We couldn't verify your number. Please try again.",
+      );
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  const changeDetails = () => {
+    setIsCodeStepVisible(false);
+    setVerificationCode("");
+    setNotice(null);
+    clearCooldown();
   };
 
   const selectCountry = (option: PickerOption) => {
@@ -163,6 +239,7 @@ export default function SignupScreen() {
       <AuthField
         autoCapitalize="none"
         autoComplete="username"
+        editable={!isBusy && !isCodeStepVisible}
         label="Username"
         onChangeText={setUsername}
         placeholder="Choose a username"
@@ -172,6 +249,7 @@ export default function SignupScreen() {
       <AuthField
         autoCapitalize="none"
         autoComplete="tel"
+        editable={!isBusy && !isCodeStepVisible}
         keyboardType="phone-pad"
         label="Phone number"
         onChangeText={setPhoneNumber}
@@ -181,12 +259,14 @@ export default function SignupScreen() {
       />
 
       <PickerField
+        disabled={isBusy || isCodeStepVisible}
         label="Home country"
         onPress={() => setActivePicker("country")}
         placeholder="Select your country"
         value={selectedCountryLabel}
       />
       <PickerField
+        disabled={isBusy || isCodeStepVisible}
         label="Preferred currency"
         onPress={() => setActivePicker("currency")}
         placeholder={
@@ -204,6 +284,7 @@ export default function SignupScreen() {
       {isCodeStepVisible ? (
         <AuthField
           autoComplete="one-time-code"
+          editable={!isBusy}
           keyboardType="number-pad"
           label="Verification code"
           maxLength={6}
@@ -215,10 +296,31 @@ export default function SignupScreen() {
 
       <AuthButton
         onPress={requestCode}
-        title={isCodeStepVisible ? "Resend code" : "Send verification code"}
+        title={
+          secondsRemaining > 0
+            ? `Resend code (${secondsRemaining}s)`
+            : isCodeStepVisible
+              ? "Resend code"
+              : "Send verification code"
+        }
         variant="secondary"
+        disabled={isBusy || secondsRemaining > 0}
+        loading={isSendingCode}
       />
-      <AuthButton onPress={createAccount} title="Create account" />
+      {isCodeStepVisible ? (
+        <AuthButton
+          onPress={changeDetails}
+          title="Change registration details"
+          variant="secondary"
+          disabled={isBusy}
+        />
+      ) : null}
+      <AuthButton
+        onPress={createAccount}
+        title="Verify & create account"
+        disabled={isBusy || !isCodeStepVisible}
+        loading={isCreatingAccount}
+      />
       {notice ? <AuthNotice tone={noticeTone}>{notice}</AuthNotice> : null}
 
       <SearchablePicker

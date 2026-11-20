@@ -10,11 +10,41 @@ Use `useTheme` from `@/hooks/use-theme` to access the current `mode`, semantic `
 
 ## Welcome and navigation
 
-The first-launch welcome screen lives at `src/app/index.tsx`, outside the tab group. Continuing marks onboarding complete in SecureStore on native and browser storage on web, then opens `/signup`. Returning users go to `/home`. Tab screens belong in `src/app/(tabs)/`; add each as a sibling route and register its label and icon in `(tabs)/_layout.tsx`. The Home route is currently a placeholder until the main event-discovery screen is built.
+The first-launch welcome screen lives at `src/app/index.tsx`, outside the tab group. Continuing marks onboarding complete in SecureStore on native and browser storage on web, then opens `/signup`. A returning authenticated user goes to `/home`; a visitor who has not signed in goes to `/signup`. Tab screens belong in `src/app/(tabs)/`; add each as a sibling route and register its label and icon in `(tabs)/_layout.tsx`. The Home route is currently a placeholder until the main event-discovery screen is built.
 
-## Authentication placeholders
+## Phone authentication
 
-The login and signup routes are `src/app/login.tsx` and `src/app/signup.tsx`. They use a username and international phone number with a future SMS OTP flow; no SMS is sent and no account or session is created until the Django endpoints are connected. The signup country and currency pickers currently use the bundled ISO metadata from `countries-list`; replace the placeholder options with the backend-supported market list when the API is ready.
+The login and signup routes are `src/app/login.tsx` and `src/app/signup.tsx`. Signup sends a username, E.164 phone number, ISO country code, and three-letter currency code to Django. The account is created only after the SMS code is verified. Login also requires a one-time code.
+
+The backend routes are:
+
+- `POST /api/auth/signup/request-code/`
+- `POST /api/auth/signup/verify-code/`
+- `POST /api/auth/login/request-code/`
+- `POST /api/auth/login/verify-code/`
+- `POST /api/auth/token/refresh/`
+- `POST /api/auth/logout/`
+- `GET /api/auth/me/` (JWT required)
+
+Codes are six digits, expire after 10 minutes, and are stored as keyed one-way digests rather than recoverable text. Signup codes allow five failed checks. Login codes are invalidated after an incorrect check, then another code can be requested after five minutes. Resends have a one-minute cooldown and each phone number is capped at five SMS attempts per hour. SMS delivery attempts are recorded without storing message bodies or OTP values. Requests are also rate-limited by IP; production deployments with multiple workers should use a shared Django cache such as Redis.
+
+The custom Django user uses phone number as `USERNAME_FIELD`, retains a username, and has no usable password for OTP-created accounts. Country is stored as a `django-countries` `CountryField`; currency is stored as an uppercase three-letter code. The bundled signup picker still uses `countries-list` metadata, so its currency suggestions are not payment-support guarantees.
+
+JWT access tokens last five minutes; refresh tokens last one day, rotate on refresh, and are blacklisted at logout. Native clients store the session with Expo SecureStore. Web builds keep tokens in memory only; use an HttpOnly-cookie design before treating a browser deployment as a persistent secure session.
+
+### Local configuration
+
+Install backend requirements and apply migrations from the repository root:
+
+```powershell
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+```
+
+Set `DJANGO_SECRET_KEY`, `BEEM_API`, and `BEEM_SECRET` as environment variables before starting Django. `BEEM_SENDER_ID` defaults to `AC-INSIGHTS`. Django does not read `.env` files automatically. Keep real credentials out of source control. Add the Django host and Expo web origin to `DJANGO_ALLOWED_HOSTS` and `CORS_ALLOWED_ORIGINS` when they differ from the local defaults.
+
+Set `EXPO_PUBLIC_API_URL` in `fast-events-app/.env.local`, including the `/api` prefix. For web or an iOS simulator, a typical local value is `http://127.0.0.1:8000/api`; for the Android emulator use `http://10.0.2.2:8000/api`. A physical phone needs the development computer's LAN address, with that host allowed by Django and reachable on the network. The app shows a configuration/network error instead of pretending an SMS was sent when it cannot reach the API.
 
 ## Get started
 
