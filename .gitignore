@@ -31,3 +31,4 @@ fast-events-app/example
 
 
 db.sqlite3
+__pycache__
