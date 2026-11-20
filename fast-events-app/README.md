@@ -8,6 +8,10 @@ Shared color palettes live in `src/theme/colors.ts`; spacing, radius, and type-s
 
 Use `useTheme` from `@/hooks/use-theme` to access the current `mode`, semantic `colors`, `isDark`, and `toggleTheme`. The reusable `ThemeToggle` component provides an accessible light/dark switch and can be placed in a future screen or settings panel. Theme selection currently lasts for the active app session.
 
+## Welcome and navigation
+
+The first-launch welcome screen lives at `src/app/index.tsx`, outside the tab group. Continuing marks onboarding complete in SecureStore on native and browser storage on web, then opens `/home`. Tab screens belong in `src/app/(tabs)/`; add each as a sibling route and register its label and icon in `(tabs)/_layout.tsx`. The Home route is currently a placeholder until the main event-discovery screen is built.
+
 ## Get started
 
 1. Install dependencies
